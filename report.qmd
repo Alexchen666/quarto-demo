@@ -1,0 +1,35 @@
+---
+title: "SDV Report"
+format:
+    pdf:
+        pdf-engine: xelatex 
+        CJKmainfont: BiauKai.ttf
+        geometry: 
+            - a4paper
+            - margin=2cm
+        include-in-header: 
+            - text: |
+                \setCJKmainfont{BiauKai}[Path = ./, Extension = .ttf, AutoFakeBold=5]
+execute: 
+  echo: false
+jupyter: python3
+---
+
+```{python}
+import polars as pl
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+```
+
+## A. 合成欄位
+
+我覺得這個**目前**還行
+
+## B. 合成方法
+
+## C. 合成表現
+
+### C-1. 保真度
+
+### C-2. 實用性
