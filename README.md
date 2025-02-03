@@ -1,3 +1,3 @@
 # Quarto Demo
 
-Use `quarto` to produce professional report.
+Use `quarto` to produce a professional report.
