@@ -2,11 +2,11 @@
 
 Use `quarto` to produce a professional report.
 
-This side project was done in CAPE, Confidential Analysis Privacy Enhancement, team at the NICS (National Institute of Cyber Security).
+This side project was done in the CAPE, Confidential Analysis Privacy Enhancement, team at the NICS (National Institute of Cyber Security).
 
 To render the pdf, you should download [quarto](https://quarto.org/) and install tinytex via `quarto install tinytex`.
 
-The result can be accessed [here](https://github.com/Alexchen666/quarto-demo/blob/main/report.pdf).
+The result can be accessed [here](https://github.com/Alexchen666/quarto-demo/blob/main/report.pdf). You can use this example to produce synthetic data evaluation report automatically by entering original and synthetic dataset name (datasets should be in the same directory of course).
 
 ---
 
