@@ -1,5 +1,8 @@
 ---
-title: "SDV Report"
+title: "合成資料評估報告"
+date: 2025-02-04
+author:
+  - name: Alex Chen
 format:
     pdf:
         pdf-engine: xelatex 
@@ -17,19 +20,352 @@ jupyter: python3
 
 ```{python}
 import polars as pl
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
+from sdv.metadata import Metadata
+from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
 ```
 
-## A. 合成欄位
+```{python}
+# ENTER YOUR DATASET NAME HERE
+data_name = 'penguins.csv'
+syn_name = 'penguins_synthetic.csv'
 
-我覺得這個**目前**還行
+# import data
+df_ori = pl.read_csv(data_name)
+df_syn = pl.read_csv(syn_name)
 
-## B. 合成方法
+metadata = Metadata.detect_from_dataframe(df_ori.to_pandas())
+```
 
-## C. 合成表現
+# A. 合成欄位
 
-### C-1. 保真度
+資料集名稱：`{python} data_name`
 
-### C-2. 實用性
+列數：`{python} df_ori.shape[0]`
+
+欄位數：`{python} df_ori.shape[1]`
+
+其中各資料型態之欄位數目如下：
+
+```{python}
+pl.DataFrame({'Data Types': [i.__class__.__name__ for i in df_ori.dtypes]}).group_by('Data Types').len().rename({'len': 'count'}).sort(['Data Types', 'count'], descending=[False, True])
+```
+
+# B. 合成方法
+
+合成模型：
+
+```{text}
+# ENTER YOUR METHOD HERE
+SDV - GaussianCopulaSynthesizer
+```
+
+合成參數：
+
+```{python}
+#| echo: true
+#| eval: false
+
+# ENTER YOUR PARAMETERS HERE
+{
+    'enforce_min_max_values': True,
+    'enforce_rounding': True,
+    'locales': ['en_US'],
+    'numerical_distributions': {},
+    'default_distribution': 'beta'
+}
+```
+
+前處理方法：
+
+```{python}
+#| echo: true
+#| eval: false
+
+# ENTER YOUR PARAMETERS HERE
+{
+    'Species': UniformEncoder(),
+    'Island': UniformEncoder(),
+    'Sex': UniformEncoder(),
+    'Culmen Length (mm)': FloatFormatter(learn_rounding_scheme=True,
+     enforce_min_max_values=True),
+    'Culmen Depth (mm)': FloatFormatter(learn_rounding_scheme=True, 
+    enforce_min_max_values=True),
+    'Flipper Length (mm)': FloatFormatter(learn_rounding_scheme=True,
+     enforce_min_max_values=True),
+    'Body Mass (g)': FloatFormatter(learn_rounding_scheme=True, 
+    enforce_min_max_values=True)
+}
+```
+
+合成條件設定：
+
+```{python}
+#| echo: true
+#| eval: false
+
+# ENTER YOUR PARAMETERS HERE
+[
+    {
+        'constraint_class': 'FixedIncrements',
+        'constraint_parameters': {
+            'column_name': 'Body Mass (g)',
+            'increment_value': 5
+        }
+    }
+]
+
+```
+
+備註：
+
+```{text}
+# ENTER YOUR COMMENTS HERE
+無
+```
+
+# C. 合成表現
+
+資料抽樣方法：
+
+```{text}
+# ENTER YOUR METHOD HERE
+普通抽樣
+```
+
+合成筆數：`{python} df_syn.shape[0]`
+
+合成欄位數：`{python} df_syn.shape[1]`
+
+其中各資料型態之欄位數目如下：
+
+```{python}
+pl.DataFrame({'Data Types': [i.__class__.__name__ for i in df_syn.dtypes]}).group_by('Data Types').len().rename({'len': 'count'}).sort(['Data Types', 'count'], descending=[False, True])
+```
+
+## C-1. 合成資料診斷
+
+```{python}
+#| output: false
+
+diagnostic_report = run_diagnostic(
+    real_data=df_ori.to_pandas(),
+    synthetic_data=df_syn.to_pandas(),
+    metadata=metadata
+)
+
+diagnostic_summary = diagnostic_report.get_properties()
+```
+
+分數：`{python} round(float(diagnostic_summary['Score'].mean()), 2)`
+
+診斷分數介於 0.0 至 1.0 之間。此分數旨在確認合成資料的結構與原始資料相似。合成資料診斷分為兩項目，詳見細項。
+
+### 資料有效性 (Data Validity)
+
+分數：`{python} round(float(diagnostic_summary.loc[diagnostic_summary.Property == 'Data Validity', 'Score']), 2)`
+
+```{python}
+diagnostic_report.get_details(property_name='Data Validity')
+```
+
+::: {.callout-note}
+# 判讀方法
+資料有效性 (Data Validity) 的數值介於 0.0 至 1.0 之間，此數值應接近 1.0。若未達 1.0，可能代表以下情形：
+
+1. 合成資料主鍵（若有）不唯一或有空值
+2. 連續型資料數值超過原始範圍
+3. 類別型資料類別數與原始資料不同
+
+可根據以上原則檢查未達 1.0 之欄位，並應視具體資料情境決定是否接受。
+:::
+
+### 資料結構 (Data Structure)
+
+分數：`{python} round(float(diagnostic_summary.loc[diagnostic_summary.Property == 'Data Structure', 'Score']), 2)`
+
+```{python}
+diagnostic_report.get_details(property_name='Data Structure')
+```
+
+::: {.callout-note}
+# 判讀方法
+資料結構 (Data Structure) 的數值介於 0.0 至 1.0 之間，此數值應接近 1.0。若未達 1.0，代表欄位數目或欄位名稱與原始資料不同，需要進行調整。
+:::
+
+## C-2. 保真度
+
+```{python}
+#| output: false
+
+quality_report = evaluate_quality(
+    real_data=df_ori.to_pandas(),
+    synthetic_data=df_syn.to_pandas(),
+    metadata=metadata
+)
+
+quality_summary = quality_report.get_properties()
+```
+
+分數：`{python} round(float(quality_summary['Score'].mean()), 2)`
+
+保真度分數介於 0.0 至 1.0 之間，此分數旨在確認合成資料的品質，數值越大代表資料型態/趨勢越相似。CAPE 建議保真度分數 0.75 以上為可接受。保真度分為兩項目，詳見細項。
+
+### 欄位型態 (Column Shapes)
+
+分數：`{python} round(float(quality_summary.loc[quality_summary.Property == 'Column Shapes', 'Score']), 2)`
+
+```{python}
+quality_report.get_details(property_name='Column Shapes')
+```
+
+::: {.callout-note}
+# 判讀方法
+欄位型態 (Column Shapes) 的數值介於 0.0 至 1.0 之間，此數值越高越好。此項目計算每個欄位在原始資料與合成資料之間的統計相似度，即各欄位的邊際分配 (Marginal Distribution) 之相似度。欄位型態未達 0.75 者，代表合成資料有部分欄位跟原始資料分佈不一致，可觀察是否低分欄位皆有相同特徵，並針對該批欄位做特徵工程，例如連續型變項可考慮尺度調整、轉換；類別型變項可考慮概化（調整 bins 數）。
+:::
+
+### 欄位對趨勢 (Column Pair Trends)
+
+分數：`{python} round(float(quality_summary.loc[quality_summary.Property == 'Column Pair Trends', 'Score']), 2)`
+
+```{python}
+quality_report.get_details(property_name='Column Pair Trends')[['Column 1', 'Column 2', 'Metric', 'Score']]
+```
+
+::: {.callout-note}
+# 判讀方法
+欄位對趨勢 (Column Pair Trends) 的數值介於 0.0 至 1.0 之間，此數值越高越好。此項目計算兩欄位相關性在原始資料與合成資料間的相似度。欄位對趨勢較低，代表合成資料的部分欄位組合與原始資料趨勢不一致，很可能是跨數值與類別的欄位對趨勢不佳，可嘗試做特徵工程改善。以實務上來說，欄位對趨勢通常較難達到高分數，需視需求進行不同門檻的要求。
+:::
+
+::: {.callout-tip}
+# 其他保真度改善建議
+除了上述原因造成保真度偏低之外，也有可能是由於原始資料有內隱的強制性資料邏輯，而生成出偏移的結果，導致保真度降低，此時可做約束條件限制產出。
+:::
+
+## C-3. 保護力
+
+### 指認性 (Singling-Out)：
+
+```{text}
+ENTER YOUR VALUE HERE
+```
+
+使用參數：
+
+```{text}
+ENTER YOUR PARAMETERS HERE
+```
+
+::: {.callout-note}
+# 判讀方法
+指認性 (Singling-Out) 風險的數值介於 0.0 至 1.0 之間，此數值越低越好。此項目代表合成資料中只有特定一筆資料有獨一無二組合的風險，不必然可以進行再辨認（即使知道這個資訊，也不代表可以知道這個人是誰）。若此指標高於 0.09，代表隱私風險較高，合成資料中有多筆跟原始資料高度相同的紀錄，可利用約束條件來加強資料邏輯，剔除極端資料組合，減少指認性風險。
+:::
+
+### 連結性 (Linkability)：
+
+```{text}
+ENTER YOUR VALUE HERE
+```
+
+使用參數：
+
+```{text}
+ENTER YOUR PARAMETERS HERE
+```
+
+::: {.callout-note}
+# 判讀方法
+連結性 (Linkability) 風險的數值介於 0.0 至 1.0 之間，此數值越低越好。此項目代表判斷兩筆（或以上）資料屬於同個人或同個團體的風險，意即當攻擊者同時有兩個與合成資料欄位重複的資料集，但缺乏將兩份資料連結起來的線索時，合成資料可以成為此線索的風險高低。若此指標高於 0.09，代表隱私風險較高，需重新評估合成資料中所指定的欄位分組方式，再決定該如何減少連結性風險。
+:::
+
+### 推論性 (Inference)：
+
+```{text}
+ENTER YOUR VALUE HERE
+```
+
+使用參數：
+
+```{text}
+ENTER YOUR PARAMETERS HERE
+```
+
+::: {.callout-note}
+# 判讀方法
+推論性 (Inference) 風險的數值介於 0.0 至 1.0 之間，此數值越低越好。此項目代表攻擊者可以猜測（推論）出資料中未知變數的值，例如攻擊者知道一筆資料的部分資訊，可藉由合成資料推論此筆資料的秘密資訊。若此指標高於 0.09，代表隱私風險較高，合成資料中秘密資訊欄位很容易被猜到，應先檢查秘密資訊欄位是否與輔助資訊欄位有高度邏輯依賴關係，再行處置。需注意的是，實務上由於此方法計算方式與機器學習高度重疊，因此結果僅供參考。
+:::
+
+## C-4. 實用性
+
+下游任務：
+
+```{text}
+ENTER YOUR TASK HERE
+分類/聚類/迴歸
+```
+
+原始資料訓練模型：
+
+```{text}
+ENTER YOUR MODEL HERE
+```
+
+原始資料訓練參數：
+
+```{text}
+ENTER YOUR PARAMETERS HERE
+```
+
+合成資料訓練模型：
+
+```{text}
+ENTER YOUR MODEL HERE
+```
+
+合成資料訓練參數：
+
+```{text}
+ENTER YOUR PARAMETERS HERE
+```
+
+其他訓練參數：
+
+```{text}
+ENTER YOUR PARAMETERS HERE
+e.g., train_test_split, cross_validate
+```
+
+驗證指標：
+```{text}
+ENTER YOUR METRICS HERE
+```
+
+原始訓練資料對原始測試資料驗證分數：
+
+```{text}
+ENTER YOUR SCORES HERE
+```
+
+合成訓練資料對原始測試資料驗證分數：
+
+```{text}
+ENTER YOUR SCORES HERE
+```
+
+::: {.callout-note}
+# 判讀方法
+實用性旨在比較原始資料與合成資料在原始資料「測試資料集」上的表現，合成資料上的表現應越高越好，至少在原始資料與合成資料的表現差異不應太大。若此情況發生，應從特徵工程、資料前處理、合成模型、機器學習等角度切入。請與 CAPE 團隊討論可能的可行方案。
+:::
+
+::: {.callout-tip}
+# 分類任務的指標判讀
+CAPE 建議關注以下關鍵指標在測試集上的表現即可：
+
+* ROC-AUC：大部分分類情境使用，0.8 以上可接受
+* MCC：適合處理不平衡資料集，0.5 以上可接受
+:::
+
+# D. CAPE 意見
+
+```{text}
+ENTER YOUR COMMENTS HERE
+```
