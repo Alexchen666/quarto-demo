@@ -6,7 +6,9 @@ This side project was done in the CAPE, Confidential Analysis Privacy Enhancemen
 
 To render the pdf, you should download [quarto](https://quarto.org/) and install tinytex via `quarto install tinytex`.
 
-The result can be accessed [here](https://github.com/Alexchen666/quarto-demo/blob/main/report.pdf). You can use this example to produce synthetic data evaluation report automatically by entering original and synthetic dataset name (datasets should be in the same directory of course).
+The result can be accessed [here](https://github.com/Alexchen666/quarto-demo/blob/main/report.pdf).
+
+You can use this example to produce a synthetic data evaluation report automatically given original and synthetic dataset names (datasets should be in the same directory of course).
 
 ---
 
